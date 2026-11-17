@@ -478,7 +478,13 @@ button.desktop-only{display:none}
   .ten-foot .caption{max-width:46ch}
 }
 
-</style><meta name="linxiang-release" content="desktop-mobile-20261117">
+
+/* Own the image drag once enlarged. Whole-page vertical scrolling stays native in the fitted view. */
+.ten-viewport.zoomed{touch-action:none;overscroll-behavior:contain}
+.ten-swipe-preview{position:absolute;inset:0;height:100%;width:100%;object-fit:contain;pointer-events:none;user-select:none}
+.ten-viewport.zoomed .ten-swipe-preview{display:none}
+
+</style><meta name="linxiang-release" content="gallery-drag-20261117">
 <meta name="description" content="《临湘：重启》的十幅孙吴生活长卷与县域地图。可查看乡里、屋田、驿传和湘水支流。"></head><body>
 
 <nav class="folio-nav" aria-label="图志导航">
@@ -2731,6 +2737,7 @@ function updateZoom(){
   view.classList.toggle('zoomed',enlarged);
   painting.style.width=enlarged?Math.round(view.clientWidth*scale)+'px':'100%';
   fit.setAttribute('aria-pressed',String(!enlarged));
+  view.closest('.ten-viewer').querySelector('.ten-touch-hint').textContent=enlarged?'单指拖图 · 双指缩放':'左右滑动换卷 · 双指缩放';
   minus.disabled=!enlarged;
   plus.disabled=scale>3.99;
 }
@@ -2819,54 +2826,117 @@ view.addEventListener('pointermove',e=>{
 });
 function stopDragging(){drag=null;view.classList.remove('dragging');}
 for(const event of ['pointerup','lostpointercapture','pointercancel'])view.addEventListener(event,stopDragging);
+
+const swipePreview=new Image();
+swipePreview.className='ten-swipe-preview';
+swipePreview.alt='';
+swipePreview.draggable=false;
+swipePreview.hidden=true;
+view.append(swipePreview);
+function clearSwipe(){
+  painting.style.transform='';
+  swipePreview.style.transform='';
+  swipePreview.hidden=true;
+}
+function swipeOffset(dx){
+  const width=view.clientWidth,target=index+(dx<0?1:-1);
+  const offset=art[target]?Math.max(-width,Math.min(width,dx)):Math.max(-28,Math.min(28,dx*.23));
+  painting.style.transform='translate3d('+offset+'px,0,0)';
+  swipePreview.hidden=!art[target]||!offset;
+  if(swipePreview.hidden)return;
+  if(swipePreview.dataset.scene!==String(target)){
+    swipePreview.src=art[target].picture;
+    swipePreview.dataset.scene=target;
+  }
+  swipePreview.style.transform='translate3d('+(offset+(dx<0?width:-width))+'px,0,0)';
+}
+function touchStart(p,afterPinch=false){
+  touch={id:p.identifier,x:p.clientX,y:p.clientY,t:performance.now(),
+    lastX:p.clientX,lastY:p.clientY,mode:scale>1?'pan':afterPinch?'page':'undecided',
+    afterPinch};
+}
 function midpoint(points){
   const a=points[0],b=points[1];
   return [(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,
     Math.max(1,Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY))];
 }
+function beginPinch(points){
+  clearSwipe();
+  const r=view.getBoundingClientRect(),[x,y,d]=midpoint(points);
+  pinch={d,scale,anchor:atPoint(x-r.left,y-r.top)};
+  touch=null;
+  lastTap=null;
+}
 view.addEventListener('touchstart',e=>{
-  if(e.touches.length===2){
-    e.preventDefault();
-    const r=view.getBoundingClientRect(),[x,y,d]=midpoint(e.touches);
-    pinch={d,scale,anchor:atPoint(x-r.left,y-r.top)};
-    touch=null;
-    lastTap=null;
+  if(e.touches.length>=2){
+    if(e.cancelable)e.preventDefault();
+    beginPinch(e.touches);
   }else if(e.touches.length===1){
-    const p=e.touches[0];
-    touch={x:p.clientX,y:p.clientY,t:performance.now()};
+    touchStart(e.touches[0]);
+    if(scale>1&&e.cancelable)e.preventDefault();
   }
 },{passive:false});
 view.addEventListener('touchmove',e=>{
-  if(pinch&&e.touches.length===2){
-    e.preventDefault();
+  if(pinch&&e.touches.length>=2){
+    if(e.cancelable)e.preventDefault();
     const r=view.getBoundingClientRect(),[x,y,d]=midpoint(e.touches);
     zoomAt(pinch.scale*d/pinch.d,x-r.left,y-r.top,pinch.anchor);
-  }else if(scale===1&&touch&&e.touches.length===1){
-    const p=e.touches[0],dx=Math.abs(p.clientX-touch.x),dy=Math.abs(p.clientY-touch.y);
-    if(dx>12&&dx>dy*1.3&&e.cancelable)e.preventDefault();
+    return;
+  }
+  if(!touch||e.touches.length!==1)return;
+  const p=e.touches[0];
+  if(p.identifier!==touch.id)return;
+  const dx=p.clientX-touch.x,dy=p.clientY-touch.y;
+  if(touch.mode==='undecided'){
+    if(Math.abs(dx)>7&&Math.abs(dx)>Math.abs(dy)*1.22)touch.mode='swipe';
+    else if(Math.abs(dy)>9)touch.mode='page';
+  }
+  if(touch.mode==='pan'){
+    if(e.cancelable)e.preventDefault();
+    view.scrollLeft-=p.clientX-touch.lastX;
+    view.scrollTop-=p.clientY-touch.lastY;
+    touch.lastX=p.clientX;
+    touch.lastY=p.clientY;
+  }else if(touch.mode==='swipe'){
+    if(e.cancelable)e.preventDefault();
+    swipeOffset(dx);
   }
 },{passive:false});
 view.addEventListener('touchend',e=>{
-  if(e.touches.length)return;
-  if(pinch){pinch=null;touch=null;return;}
-  if(!touch)return;
-  const p=e.changedTouches[0],dx=p.clientX-touch.x,dy=p.clientY-touch.y;
-  const moved=Math.hypot(dx,dy),now=performance.now();
-  if(scale===1&&Math.abs(dx)>40&&Math.abs(dx)>1.4*Math.abs(dy)){
+  if(pinch){
+    if(e.touches.length>=2){beginPinch(e.touches);return;}
+    pinch=null;
+    if(e.touches.length===1)touchStart(e.touches[0],true);
+    return;
+  }
+  if(e.touches.length||!touch)return;
+  const move=touch;
+  touch=null;
+  const p=e.changedTouches[0],dx=p.clientX-move.x,dy=p.clientY-move.y;
+  const t=performance.now(),duration=t-move.t;
+  clearSwipe();
+  if(move.mode==='swipe'){
     if(e.cancelable)e.preventDefault();
-    select(index+(dx<0?1:-1));
+    const far=Math.abs(dx)>Math.min(72,view.clientWidth*.19);
+    const flick=duration<350&&Math.abs(dx)>33&&Math.abs(dx)/Math.max(1,duration)>.25;
+    if(far||flick)select(index+(dx<0?1:-1));
     lastTap=null;
-  }else if(moved<12&&now-touch.t<330){
-    if(lastTap&&now-lastTap.t<300&&Math.hypot(p.clientX-lastTap.x,p.clientY-lastTap.y)<35){
+  }else if(!move.afterPinch&&Math.hypot(dx,dy)<12&&duration<330){
+    if(lastTap&&t-lastTap.t<300&&Math.hypot(p.clientX-lastTap.x,p.clientY-lastTap.y)<35){
       if(e.cancelable)e.preventDefault();
       const r=view.getBoundingClientRect();
       zoomAt(scale>1?1:2,p.clientX-r.left,p.clientY-r.top);
       lastTap=null;
-    }else lastTap={x:p.clientX,y:p.clientY,t:now};
+    }else lastTap={x:p.clientX,y:p.clientY,t};
   }else lastTap=null;
-  touch=null;
 },{passive:false});
-view.addEventListener('touchcancel',()=>{pinch=null;touch=null;lastTap=null;});
+view.addEventListener('touchcancel',()=>{
+  pinch=null;
+  touch=null;
+  lastTap=null;
+  clearSwipe();
+});
+
 window.addEventListener('resize',updateZoom,{passive:true});
 
 let atMap=false;

@@ -13,8 +13,8 @@ jobs:
       - name: Wait for this release on GitHub Pages
         run: |
           for attempt in {1..24}; do
-            if curl --fail --silent --show-error --max-time 16 "$PREVIEW?release=desktop-mobile-20261117" -o "$RUNNER_TEMP/linxiang.html" &&
-              grep -q 'linxiang-release.*desktop-mobile-20261117' "$RUNNER_TEMP/linxiang.html"; then
+            if curl --fail --silent --show-error --max-time 16 "$PREVIEW?release=gallery-drag-20261117" -o "$RUNNER_TEMP/linxiang.html" &&
+              grep -q 'linxiang-release.*gallery-drag-20261117' "$RUNNER_TEMP/linxiang.html"; then
               exit 0
             fi
             sleep 10
@@ -37,12 +37,25 @@ jobs:
                   page=browser.new_page(viewport={'width':390 if phone else 1440,'height':844 if phone else 900},is_mobile=phone,has_touch=phone)
                   errors=[]
                   page.on('pageerror',lambda e:errors.append(str(e)))
-                  response=page.goto(url+'?release=desktop-mobile-20261117',wait_until='domcontentloaded',timeout=45000)
+                  response=page.goto(url+'?release=gallery-drag-20261117',wait_until='domcontentloaded',timeout=45000)
                   assert response and response.ok,response.status
                   page.wait_for_function("document.querySelectorAll('.ten-card').length===10")
                   assert page.locator('#tenDrawer').evaluate('el=>!el.open')
                   assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth+1')
                   page.locator('#tenDrawer summary').click()
+                  if phone:
+                      page.locator('.ten-card').first.tap()
+                      view=page.locator('#ten-viewport')
+                      view.evaluate("el=>el.scrollIntoView({block:'center',behavior:'instant'})")
+                      box=view.bounding_box()
+                      cdp=page.context.new_cdp_session(page)
+                      for phase,fraction in (('touchStart',.82),('touchMove',.60),('touchMove',.34)):
+                          cdp.send('Input.dispatchTouchEvent',{'type':phase,'touchPoints':[dict(
+                              id=1,x=round(box['x']+box['width']*fraction),y=round(box['y']+box['height']/2))]})
+                          page.wait_for_timeout(28)
+                      assert page.locator('#ten-painting').evaluate("el=>el.style.transform.includes('translate3d')")
+                      cdp.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
+                      assert page.locator('#ten-sceneTitle').inner_text()==page.locator('.ten-card').nth(1).inner_text()
                   for i in (0,4,9):
                       card=page.locator('.ten-card').nth(i)
                       name=card.inner_text()
