@@ -5,7 +5,7 @@ permissions:
   contents: read
 jobs:
   preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8
     env:
       PREVIEW: https://mohammodhumaira-gif.github.io/linxiang-scroll-preview/
@@ -24,15 +24,15 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/preview-env"
           "$RUNNER_TEMP/preview-env/bin/pip" install playwright==1.51.0
-          "$RUNNER_TEMP/preview-env/bin/playwright" install --with-deps chromium
+          command -v google-chrome
       - name: Check the public site on phone and desktop
         run: |
           "$RUNNER_TEMP/preview-env/bin/python" - <<'PY'
-          import os
+          import os, shutil
           from playwright.sync_api import sync_playwright
           url=os.environ['PREVIEW']
           with sync_playwright() as p:
-              browser=p.chromium.launch()
+              browser=p.chromium.launch(executable_path=shutil.which('google-chrome'))
               for phone in (True,False):
                   page=browser.new_page(viewport={'width':390 if phone else 1440,'height':844 if phone else 900},is_mobile=phone,has_touch=phone)
                   errors=[]
