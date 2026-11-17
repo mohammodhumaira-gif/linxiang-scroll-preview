@@ -1,0 +1,67 @@
+name: Verify public preview
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PREVIEW: https://mohammodhumaira-gif.github.io/linxiang-scroll-preview/
+    steps:
+      - name: Wait for this release on GitHub Pages
+        run: |
+          for attempt in {1..24}; do
+            if curl --fail --silent --show-error --max-time 16 "$PREVIEW?release=desktop-mobile-20261117" -o "$RUNNER_TEMP/linxiang.html" &&
+              grep -q 'linxiang-release.*desktop-mobile-20261117' "$RUNNER_TEMP/linxiang.html"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+      - name: Set up the browser
+        run: |
+          python3 -m venv "$RUNNER_TEMP/preview-env"
+          "$RUNNER_TEMP/preview-env/bin/pip" install playwright==1.51.0
+          "$RUNNER_TEMP/preview-env/bin/playwright" install --with-deps chromium
+      - name: Check the public site on phone and desktop
+        run: |
+          "$RUNNER_TEMP/preview-env/bin/python" - <<'PY'
+          import os
+          from playwright.sync_api import sync_playwright
+          url=os.environ['PREVIEW']
+          with sync_playwright() as p:
+              browser=p.chromium.launch()
+              for phone in (True,False):
+                  page=browser.new_page(viewport={'width':390 if phone else 1440,'height':844 if phone else 900},is_mobile=phone,has_touch=phone)
+                  errors=[]
+                  page.on('pageerror',lambda e:errors.append(str(e)))
+                  response=page.goto(url+'?release=desktop-mobile-20261117',wait_until='domcontentloaded',timeout=45000)
+                  assert response and response.ok,response.status
+                  page.wait_for_function("document.querySelectorAll('.ten-card').length===10")
+                  assert page.locator('#tenDrawer').evaluate('el=>!el.open')
+                  assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth+1')
+                  page.locator('#tenDrawer summary').click()
+                  for i in (0,4,9):
+                      card=page.locator('.ten-card').nth(i)
+                      name=card.inner_text()
+                      card.click()
+                      page.wait_for_function("document.querySelector('#ten-painting').naturalWidth===2172")
+                      assert page.locator('#ten-sceneTitle').inner_text()==name
+                  if not phone:
+                      page.locator('#desktopRead').click()
+                      assert page.locator('#desktopScrollDialog #ten-viewer').count()==1
+                  page.locator('#ten-mapLink').click()
+                  page.wait_for_function("state.map==='CITY' && document.querySelectorAll('#surfaceLayer image[href*=\"/assets/\"]').length>0")
+                  if phone:
+                      page.locator('#phoneMapDetails').click()
+                      assert page.locator('#phoneMapSheet').evaluate('el=>el.open')
+                  else:
+                      page.locator('#desktopMapOpen').click()
+                      assert page.locator('#desktopMapDialog #map').count()==1
+                  assert not errors,errors
+                  print(('Phone' if phone else 'Desktop')+' preview passed on public GitHub Pages.',flush=True)
+                  page.close()
+              browser.close()
+          PY

@@ -449,7 +449,37 @@ footer{border-top:1px solid #cdbb9a;margin:12px 0 5px;padding:11px 0 0;color:#5e
 }
 @media(max-width:370px){.ten-tools{gap:4px}.ten-tools button,.ten-tools .control{padding-inline:6px}.ten-drawer>summary{padding-inline:9px}}
 
-</style><meta name="description" content="《临湘：重启》的十幅孙吴生活长卷与县域地图。可查看乡里、屋田、驿传和湘水支流。"></head><body>
+
+button.desktop-only{display:none}
+.desk-dialog:modal{box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:min(calc(100% - 26px),1860px);height:calc(100dvh - 26px);max-width:none;max-height:none;margin:auto;padding:12px 16px 16px;border:1px solid #b29468;border-radius:5px;background:#f2ead7;color:#273d32;overflow:auto}
+.desk-dialog::backdrop{background:#18251ec9}
+.desk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;border-bottom:1px solid #cbb695;padding:0 0 8px}
+.desk-head h2{font:700 26px var(--title)}
+.desk-head p{font-size:12px;color:#655848;margin:0}
+.desk-head button{min-height:34px;min-width:80px}
+#desktopScrollDialog .ten-viewer{margin:0;box-shadow:none}
+#desktopScrollDialog .ten-index{padding:0}
+#desktopScrollDialog .ten-card{padding:6px 10px;min-height:33px}
+#desktopScrollDialog .ten-viewport{max-height:calc(100dvh - 242px)}
+#desktopScrollDialog .ten-viewport.zoomed{aspect-ratio:auto;height:calc(100dvh - 245px);min-height:190px;max-height:none}
+#desktopScrollDialog #desktopRead,#desktopScrollDialog #ten-close{display:none}
+#desktopMapDialog .layout{--map-height:clamp(275px,calc(100dvh - 224px),1120px);height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(280px,360px);margin:0}
+#desktopMapDialog .side{max-height:calc(100dvh - 112px)}
+#desktopMapDialog #desktopMapOpen{display:none}
+@media(min-width:1000px){
+  button.desktop-only{display:inline-grid;place-items:center}
+  .folio-nav{position:sticky;top:0;z-index:30}
+  #cover,#travels,#atlas,#walkthrough{scroll-margin-top:74px}
+  .ten-viewer{scroll-margin-top:74px}
+  .ten-drawer>summary:hover{background:#fbf0d5}
+  #desktopRead,#desktopMapOpen{border-color:#9d774f;color:#684730}
+  .atlas-section .layout{grid-template-columns:minmax(0,1fr) minmax(300px,clamp(320px,25vw,420px))}
+  .ten-tools{width:auto}
+  .ten-foot .caption{max-width:46ch}
+}
+
+</style><meta name="linxiang-release" content="desktop-mobile-20261117">
+<meta name="description" content="《临湘：重启》的十幅孙吴生活长卷与县域地图。可查看乡里、屋田、驿传和湘水支流。"></head><body>
 
 <nav class="folio-nav" aria-label="图志导航">
   <a class="masthead" href="#cover"><span class="brand-seal" aria-hidden="true">湘</span><span>临湘：重启</span></a>
@@ -500,6 +530,7 @@ footer{border-top:1px solid #cdbb9a;margin:12px 0 5px;padding:11px 0 0;color:#5e
     <button type="button" id="ten-zoomIn" aria-label="放大">+</button>
     <a class="control download" id="ten-download" download>保存 JPG</a>
     <button type="button" id="ten-mapLink"></button>
+    <button class="desktop-only" type="button" id="desktopRead">全屏阅卷</button>
     <button type="button" id="ten-close">合卷</button>
    </div>
   </div>
@@ -605,6 +636,7 @@ footer{border-top:1px solid #cdbb9a;margin:12px 0 5px;padding:11px 0 0;color:#5e
           <div class="map-appearance">
             <label for="artMode">图样</label><select id="artMode" aria-label="地图图样"><option value="sim" selected>仿真地表</option><option value="new">新设色</option><option value="ink">墨线稿</option><option value="legacy">原图样</option></select>
             <button type="button" id="openArt">图鉴</button>
+            <button class="desktop-only" type="button" id="desktopMapOpen">全屏地图</button>
             <button type="button" id="waterMode" aria-pressed="false" aria-controls="waterTools">水系</button>
             <details id="mapLayers" class="map-layers">
               <summary>图层</summary>
@@ -654,6 +686,12 @@ footer{border-top:1px solid #cdbb9a;margin:12px 0 5px;padding:11px 0 0;color:#5e
   </section>
   <footer><span>临湘图志 · 《临湘：重启》游戏设定</span><span>街巷、田地、行程与溪源、汇流为游戏地编设定。图上距离以米计。</span></footer>
 </main>
+<dialog id="desktopScrollDialog" class="desk-dialog" aria-labelledby="desktopScrollTitle">
+  <div class="desk-head"><h2 id="desktopScrollTitle">临湘十卷</h2><p>方向键换卷 · Ctrl + 滚轮缩放 · 拖动看细节</p><form method="dialog"><button>退出全屏</button></form></div>
+</dialog>
+<dialog id="desktopMapDialog" class="desk-dialog" aria-labelledby="desktopMapTitle">
+  <div class="desk-head"><h2 id="desktopMapTitle">临湘舆图</h2><p>拖动或用方向键移动 · 滚轮缩放</p><form method="dialog"><button>退出全屏</button></form></div>
+</dialog>
 <dialog id="phoneMapSheet" class="map-sheet" aria-labelledby="sheetTitle"><div class="sheet-title"><strong id="sheetTitle">地图详情</strong><form method="dialog"><button>收起</button></form></div></dialog>
 <dialog id="artDialog"><h2>地图图样</h2><div id="artBody"></div><form method="dialog"><button>关闭</button></form></dialog>
 
@@ -2613,6 +2651,29 @@ $('#finder').addEventListener('submit',()=>{
   if($('#search').value.trim()&&!$('#status').textContent.includes('未找到'))openMapDetails();
 });
 
+
+const wideDesk=matchMedia('(min-width: 1000px)');
+const desktopMap=$('#desktopMapDialog');
+const desktopLayout=$('#atlas .layout');
+const desktopLayoutHome=desktopLayout.parentNode;
+$('#desktopMapOpen').addEventListener('click',()=>{
+  if(!wideDesk.matches||desktopMap.open)return;
+  desktopMap.append(desktopLayout);
+  desktopMap.showModal();
+  svg.focus({preventScroll:true});
+});
+desktopMap.addEventListener('close',()=>desktopLayoutHome.insertBefore(desktopLayout,$('#status')));
+wideDesk.addEventListener('change',()=>{if(!wideDesk.matches&&desktopMap.open)desktopMap.close();});
+svg.addEventListener('keydown',e=>{
+  if(e.altKey||e.ctrlKey||e.metaKey||!e.key.startsWith('Arrow'))return;
+  const dx=(e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0),dy=(e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0);
+  if(!dx&&!dy)return;
+  e.preventDefault();
+  stopFly();
+  const b=CAMERA.pending||state.vb;
+  queueCamera([b[0]+dx*b[2]*.16,b[1]+dy*b[3]*.16,b[2],b[3]]);
+});
+
 const hash=decodeURIComponent(location.hash.slice(1));
 const targetTown=D.towns.find(t=>t.name===hash||t.id===hash);
 if(H[hash])locateHouse(hash);
@@ -2841,6 +2902,37 @@ mapButton.addEventListener('click',()=>{
   updateReturn();
   atlas.scrollIntoView({block:'start'});
 });
+
+const desktopBook=$('#desktopScrollDialog');
+const desktopTitles=pick('index');
+function bookCentre(){
+  return atPoint(view.clientWidth/2,view.clientHeight/2);
+}
+function keepBookCentre(centre){
+  zoomAt(scale,view.clientWidth/2,view.clientHeight/2,centre);
+}
+function closeDesktopBook(){
+  if(viewer.parentNode!==desktopBook)return;
+  const centre=bookCentre();
+  drawer.append(desktopTitles,viewer);
+  keepBookCentre(centre);
+}
+$('#desktopRead').addEventListener('click',()=>{
+  if(!wideDesk.matches||desktopBook.open)return;
+  const centre=bookCentre();
+  desktopBook.append(desktopTitles,viewer);
+  desktopBook.showModal();
+  keepBookCentre(centre);
+  view.focus({preventScroll:true});
+});
+desktopBook.addEventListener('close',closeDesktopBook);
+mapButton.addEventListener('click',()=>{
+  if(!desktopBook.open)return;
+  closeDesktopBook();
+  desktopBook.close();
+},{capture:true});
+wideDesk.addEventListener('change',()=>{if(!wideDesk.matches&&desktopBook.open)desktopBook.close();});
+
 function updateReturn(){
   returns.textContent=atMap?'回《'+art[index].title+'》':'回十卷';
 }
